@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор курения - Сигареты vs Вейп</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#121212',
+                            800: '#1E1E1E',
+                            700: '#2D2D2D',
+                            600: '##3A3A3A',
+                            500: '#4A4A4A',
+                        },
+                        light: {
+                            900: '#FFFFFF',
+                            800: '#F8FAFC',
+                            700: '#F1F5F9',
+                            600: '#E2E8F0',
+                            500: '#CBD5E1',
+                        },
+                        primary: {
+                            DEFAULT: '#4F46E5',
+                            600: '#4338CA',
+                        },
+                        cigarette: {
+                            DEFAULT: '#8B4513',
+                            600: '#654321',
+                        },
+                        vape: {
+                            DEFAULT: '#4682B4',
+                            600: '#36648B',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="dark:bg-dark-900 bg-light-900 dark:text-gray-200 text-gray-800">
+    <div id="root" class="min-h-screen pb-16"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { createRoot } = ReactDOM;
+
+        // Утилиты для работы с localStorage
+        const saveToLocalStorage = (key, data) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (error) {
+                console.error('Ошибка сохранения в localStorage:', error);
+            }
+        };
+
+        const loadFromLocalStorage = (key) => {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : null;
+            } catch (error) {
+                console.error('Ошибка загрузки из localStorage:', error);
+                return null;
+            }
+        };
+
+        // Основной компонент приложения
+        function App() {
+            const [theme, setTheme] = useState('dark');
+            const [activeTab, setActiveTab] = useState('calculator');
+            const [cigarettePurchases, setCigarettePurchases] = useState([]);
+            const [vapePurchases, setVapePurchases] = useState([]);
+
+            // Загрузка данных при монтировании
+            useEffect(() => {
+                // Загрузка темы
+                const savedTheme = loadFromLocalStorage('smoking-theme') || 'dark';
+                setTheme(savedTheme);
+                document.documentElement.classList.add(savedTheme);
+
+                // Загрузка покупки
+                const savedCigarettePurchases = loadFromLocalStorage('cigarette-purchases') || [];
+                const savedVapePurchases = loadFromLocalStorage('vape-purchases') || [];
+                
+                setCigarettePurchases(savedCigarettePurchases);
+                setVapePurchases(savedVapePurchases);
+            }, []);
+
+            // Сохранение темы
+            const toggleTheme = (newTheme) => {
+                setTheme(newTheme);
+                document.documentElement.classList.remove('dark', 'light');
+                document.documentElement.classList.add(newTheme);
+                saveToLocalStorage('smoking-theme', newTheme);
+            };
+
+            // Добавление покупки сигарет
+            const addCigarettePurchase = (purchase) => {
+                const newPurchases = [...cigarettePurchases, purchase];
+                setCigarettePurchases(newPurchases);
+                saveToLocalStorage('cigarette-purchases', newPurchases);
+            };
+
+            // Добавление покупки вейпа
+            const addVapePurchase = (purchase) => {
+                const newPurchases = [...vapePurchases, purchase];
+                setVapePurchases(newPurchases);
+                saveToLocalStorage('vape-purchases', newPurchases);
+            };
+
+            // Удаление покупки сигарет
+            const deleteCigarettePurchase = (id) => {
+                const newPurchases = cigarettePurchases.filter(p => p.id !== id);
+                setCigarettePurchases(newPurchases);
+                saveToLocalStorage('cigarette-purchases', newPurchases);
+            };
+
+            // Удаление покупки вейпа
+            const deleteVapePurchase = (id) => {
+                const newPurchases = vapePurchases.filter(p => p.id !== id);
+                setVapePurchases(newPurchases);
+                saveToLocalStorage('vape-purchases', newPurchases);
+            };
+
+            // Обновление duration для сигарет
+            const updateCigaretteDuration = (id, duration) => {
+                const updatedPurchases = cigarettePurchases.map(p => 
+                    p.id === id ? { ...p, duration: parseFloat(duration) } : p
+                );
+                setCigarettePurchases(updatedPurchases);
+                saveToLocalStorage('cigarette-purchases', updatedPurchases);
+            };
+
+            // Обновление duration для вейпа
+            const updateVapeDuration = (id, duration) => {
+                const updatedPurchases = vapePurchases.map(p => 
+                    p.id === id ? { ...p, duration: parseFloat(duration) } : p
+                );
+                setVapePurchases(updatedPurchases);
+                saveToLocalStorage('vape-purchases', updatedPurchases);
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto px-4 py-8">
+                    <Header theme={theme} toggleTheme={toggleTheme} />
+                    
+                    <div className="mt-8">
+                        {activeTab === 'calculator' && (
+                            <CalculatorTab 
+                                onAddCigarettePurchase={addCigarettePurchase}
+                                onAddVapePurchase={addVapePurchase}
+                                theme={theme}
+                            />
+                        )}
+                        {activeTab === 'history' && (
+                            <HistoryTab
+                                cigarettePurchases={cigarettePurchases}
+                                vapePurchases={vapePurchases}
+                                onDeleteCigarettePurchase={deleteCigarettePurchase}
+                                onDeleteVapePurchase={deleteVapePurchase}
+                                onUpdateCigaretteDuration={updateCigaretteDuration}
+                                onUpdateVapeDuration={updateVapeDuration}
+                                theme={theme}
+                            />
+                        )}
+                        {activeTab === 'stats' && (
+                            <StatsTab
+                                cigarettePurchases={cigarettePurchases}
+                                vapePurchases={vapePurchases}
+                                theme={theme}
+                            />
+                        )}
+                    </div>
+                    
+                    <div className="fixed bottom-4 left-4 right-4 mx-auto max-w-md bg-light-800 dark:bg-dark-800 rounded-2xl shadow-lg flex justify-around items-center p-2 h-16 z-10">
+                        <TabButton 
+                            active={activeTab === 'calculator'} 
+                            onClick={() => setActiveTab('calculator')}
+                            icon="calculator"
+                            label="Калькулятор"
+                            theme={theme}
+                        />
+                        <TabButton 
+                            active={activeTab === 'history'} 
+                            onClick={() => setActiveTab('history')}
+                            icon="history"
+                            label="История"
+                            theme={theme}
+                        />
+                        <TabButton 
+                            active={activeTab === 'stats'} 
+                            onClick={() => setActiveTab('stats')}
+                            icon="chart-bar"
+                            label="Статистика"
+                            theme={theme}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        // Компонент заголовка
+        function Header({ theme, toggleTheme }) {
+            return (
+                <header className="flex items-center justify-between">
+                    <div className="flex items-center">
+                        <div className="bg-primary-600 w-10 h-10 rounded-lg flex items-center justify-center">
+                            <i className="fas fa-smoking text-white text-xl"></i>
+                        </div>
+                        <h1 className="ml-3 flex flex-col text-2xl font-bold dark:text-gray-200 text-gray-800">
+                            Курение <span className="text-primary-600">Калькулятор</span>
+                        </h1>
+                    </div>
+                    <button 
+                        onClick={() => toggleTheme(theme === 'dark' ? 'light' : 'dark')}
+                        className="p-2 rounded-lg dark:bg-dark-700 bg-light-700"
+                    >
+                        <i className={`fas fa-${theme === 'dark' ? 'sun' : 'moon'}`}></i>
+                    </button>
+                </header>
+            );
+        }
+
+        // Компонент кнопки вкладки
+        function TabButton({ active, onClick, icon, label, theme }) {
+            return (
+                <button 
+                    onClick={onClick}
+                    className={`flex items-center justify-center px-4 py-2 rounded-2xl transition-all ${
+                        active 
+                            ? 'bg-primary-600 text-white'
+                            : 'text-gray-600 dark:text-gray-400'
+                    }`}
+                >
+                    <i className={`fas fa-${icon} text-lg ${active ? 'mr-2' : ''}`}></i>
+                    {active && <span className="text-sm font-medium">{label}</span>}
+                </button>
+            );
+        }
+
+        // Компонент вкладки калькулятора
+        function CalculatorTab({ onAddCigarettePurchase, onAddVapePurchase, theme }) {
+            const [activeCalc, setActiveCalc] = useState('cigarette');
+            
+            return (
+                <div>
+                    <h2 className="text-xl font-bold mb-6">Добавить покупку</h2>
+                    
+                    <div className="flex justify-center mb-6">
+                        <div className="flex bg-light-700 dark:bg-dark-700 rounded-lg p-1">
+                            <button
+                                onClick={() => setActiveCalc('cigarette')}
+                                className={`px-4 py-2 rounded-md transition-colors ${
+                                    activeCalc === 'cigarette' 
+                                        ? 'bg-cigarette-600 text-white' 
+                                        : 'text-gray-600 dark:text-gray-400'
+                                }`}
+                            >
+                                <i className="fas fa-smoking mr-2"></i>
+                                Сигареты
+                            </button>
+                            <button
+                                onClick={() => setActiveCalc('vape')}
+                                className={`px-4 py-2 rounded-md transition-colors ${
+                                    activeCalc === 'vape' 
+                                        ? 'bg-vape-600 text-white' 
+                                        : 'text-gray-600 dark:text-gray-400'
+                                }`}
+                            >
+                                <i className="fas fa-cloud mr-2"></i>
+                                Вейп
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {activeCalc === 'cigarette' ? (
+                        <CigaretteForm onAddPurchase={onAddCigarettePurchase} theme={theme} />
+                    ) : (
+                        <VapeForm onAddPurchase={onAddVapePurchase} theme={theme} />
+                    )}
+                </div>
+            );
+        }
+
+        // Компонент формы для сигарет
+        function CigaretteForm({ onAddPurchase, theme }) {
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const [price, setPrice] = useState('');
+            const [quantity, setQuantity] = useState(1);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                
+                const purchase = {
+                    id: Date.now().toString(),
+                    date,
+                    price: parseFloat(price),
+                    quantity: parseInt(quantity),
+                    duration: null,
+                    type: 'cigarette'
+                };
+                
+                onAddPurchase(purchase);
+                
+                // Сброс формы
+                setPrice('');
+            };
+
+            return (
+                <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-6 shadow">
+                    <h3 className="font-medium mb-4">
+                        <i className="fas fa-smoking mr-2"></i>
+                        Покупка сигарет
+                    </h3>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">
+                                Дата покупки
+                            </label>
+                            <input 
+                                type="date" 
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">
+                                Цена за пачку (₽)
+                            </label>
+                            <input 
+                                type="number" 
+                                value={price}
+                                onChange={(e) => setPrice(e.target.value)}
+                                className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                placeholder="Например: 250"
+                                min="0"
+                                step="0.01"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">
+                                Количество пачек
+                            </label>
+                            <input 
+                                type="number" 
+                                value={quantity}
+                                onChange={(e) => setQuantity(e.target.value)}
+                                className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                min="1"
+                                required
+                            />
+                        </div>
+                        
+                        <button
+                            type="submit"
+                            className="w-full bg-cigarette-600 hover:bg-cigarette-700 py-3 rounded-lg flex items-center justify-center text-white mt-4"
+                        >
+                            <i className="fas fa-plus-circle mr-2"></i>
+                            Добавить покупку
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // Компонент формы для вейпа
+        function VapeForm({ onAddPurchase, theme }) {
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const [totalPrice, setTotalPrice] = useState('');
+            const [hasCoil, setHasCoil] = useState(true);
+            const [coilQuantity, setCoilQuantity] = useState(1);
+            const [hasLiquid, setHasLiquid] = useState(true);
+            const [liquidQuantity, setLiquidQuantity] = useState(1);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                
+                const purchase = {
+                    id: Date.now().toString(),
+                    date,
+                    totalPrice: parseFloat(totalPrice),
+                    coil: hasCoil ? parseInt(coilQuantity) : 0,
+                    liquid: hasLiquid ? parseInt(liquidQuantity) : 0,
+                    duration: null,
+                    type: 'vape'
+                };
+                
+                onAddPurchase(purchase);
+                
+                // Сброс формы
+                setTotalPrice('');
+                setCoilQuantity(1);
+                setLiquidQuantity(1);
+            };
+
+            return (
+                <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-6 shadow">
+                    <h3 className="font-medium mb-4">
+                        <i className="fas fa-cloud mr-2"></i>
+                        Покупка для вейпа
+                    </h3>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">
+                                Дата покупки
+                            </label>
+                            <input 
+                                type="date" 
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                required
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium mb-1">
+                                Общая стоимость (₽)
+                            </label>
+                            <input 
+                                type="number" 
+                                value={totalPrice}
+                                onChange={(e) => setTotalPrice(e.target.value)}
+                                className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-600"
+                                placeholder="Например: 1500"
+                                min="0"
+                                step="0.01"
+                                required
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hasCoil}
+                                        onChange={(e) => setHasCoil(e.target.checked)}
+                                        className="h-4 w-4 rounded dark:bg-dark-600 bg-light-600 text-vape-600 focus:ring-vape-500 mr-2"
+                                    />
+                                    <label className="text-sm font-medium">
+                                        Испаритель
+                                    </label>
+                                </div>
+                                
+                                {hasCoil && (
+                                    <div>
+                                        <label className="block text-xs font-medium mb-1 dark:text-gray-400 text-gray-600">
+                                            Количество
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            value={coilQuantity}
+                                            onChange={(e) => setCoilQuantity(e.target.value)}
+                                            className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-vape-600"
+                                            min="1"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <div className="flex items-center">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hasLiquid}
+                                        onChange={(e) => setHasLiquid(e.target.checked)}
+                                        className="h-4 w-4 rounded dark:bg-dark-600 bg-light-600 text-vape-600 focus:ring-vape-500 mr-2"
+                                    />
+                                    <label className="text-sm font-medium">
+                                        Жидкость
+                                    </label>
+                                </div>
+                                
+                                {hasLiquid && (
+                                    <div>
+                                        <label className="block text-xs font-medium mb-1 dark:text-gray-400 text-gray-600">
+                                            Количество (мл)
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            value={liquidQuantity}
+                                            onChange={(e) => setLiquidQuantity(e.target.value)}
+                                            className="w-full dark:bg-dark-700 bg-light-700 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-vape-600"
+                                            min="1"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <button
+                            type="submit"
+                            className="w-full bg-vape-600 hover:bg-vape-700 py-3 rounded-lg flex items-center justify-center text-white mt-4"
+                        >
+                            <i className="fas fa-plus-circle mr-2"></i>
+                            Добавить покупку
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // Компонент вкладки истории
+        function HistoryTab({ 
+            cigarettePurchases, 
+            vapePurchases, 
+            onDeleteCigarettePurchase, 
+            onDeleteVapePurchase,
+            onUpdateCigaretteDuration,
+            onUpdateVapeDuration,
+            theme 
+        }) {
+            const [activeHistory, setActiveHistory] = useState('cigarette');
+            const [editingDuration, setEditingDuration] = useState(null);
+            const [durationInput, setDurationInput] = useState('');
+
+            const formatDate = (dateString) => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ru-RU');
+            };
+
+            // Функция для обновления duration покупки
+            const updatePurchaseDuration = (id, type, duration) => {
+                const parsedDuration = parseFloat(duration);
+                if (parsedDuration <= 0) return;
+
+                if (type === 'cigarette') {
+                    onUpdateCigaretteDuration(id, duration);
+                } else {
+                    onUpdateVapeDuration(id, duration);
+                }
+
+                setEditingDuration(null);
+                setDurationInput('');
+            };
+
+            const startEditing = (purchase) => {
+                setEditingDuration(purchase.id);
+                setDurationInput(purchase.duration || '');
+            };
+
+            const cancelEditing = () => {
+                setEditingDuration(null);
+                setDurationInput('');
+            };
+
+            return (
+                <div>
+                    <h2 className="text-xl font-bold mb-6">История покупок</h2>
+                    
+                    <div className="flex justify-center mb-6">
+                        <div className="flex bg-light-700 dark:bg-dark-700 rounded-lg p-1">
+                            <button
+                                onClick={() => setActiveHistory('cigarette')}
+                                className={`px-4 py-2 rounded-md transition-colors ${
+                                    activeHistory === 'cigarette' 
+                                        ? 'bg-cigarette-600 text-white' 
+                                        : 'text-gray-600 dark:text-gray-400'
+                                }`}
+                            >
+                                <i className="fas fa-smoking mr-2"></i>
+                                Сигареты
+                            </button>
+                            <button
+                                onClick={() => setActiveHistory('vape')}
+                                className={`px-4 py-2 rounded-md transition-colors ${
+                                    activeHistory === 'vape' 
+                                        ? 'bg-vape-600 text-white' 
+                                        : 'text-gray-600 dark:text-gray-400'
+                                }`}
+                            >
+                                <i className="fas fa-cloud mr-2"></i>
+                                Вейп
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {activeHistory === 'cigarette' ? (
+                        <div className="space-y-4">
+                            {cigarettePurchases.length === 0 ? (
+                                <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-8 text-center">
+                                    <i className="fas fa-smoking text-5xl mb-4 text-gray-400"></i>
+                                    <h3 className="text-xl font-medium mb-2">Покупок нет</h3>
+                                    <p className="dark:text-gray-500 text-gray-600">
+                                        Добавьте первую покупку сигарет
+                                    </p>
+                                </div>
+                            ) : (
+                                cigarettePurchases.map(purchase => (
+                                    <div key={purchase.id} className="dark:bg-dark-800 bg-light-800 rounded-xl p-4 shadow">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex-1">
+                                                <div className="font-medium">
+                                                    {formatDate(purchase.date)} - {purchase.price} ₽
+                                                </div>
+                                                <div className="text-sm dark:text-gray-400 text-gray-600">
+                                                    {purchase.quantity} пачка(и)
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => onDeleteCigarettePurchase(purchase.id)}
+                                                className="text-red-500 hover:text-red-400 p-2 ml-2"
+                                            >
+                                                <i className="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        {editingDuration === purchase.id ? (
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="number"
+                                                    value={durationInput}
+                                                    onChange={(e) => setDurationInput(e.target.value)}
+                                                    className="flex-1 dark:bg-dark-700 bg-light-700 border dark:border-dark-600 border-light-500 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-cigarette-600"
+                                                    placeholder="На сколько дней хватило"
+                                                    min="0.1"
+                                                    step="0.1"
+                                                />
+                                                <button
+                                                    onClick={() => updatePurchaseDuration(purchase.id, 'cigarette', durationInput)}
+                                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    onClick={cancelEditing}
+                                                    className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
+                                                >
+                                                    ✗
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between items-center">
+                                                <div className="text-sm dark:text-gray-400 text-gray-600">
+                                                    {purchase.duration 
+                                                        ? `На ${purchase.duration} дней · ${(purchase.price / purchase.duration).toFixed(2)} ₽/день`
+                                                        : 'Не указано, на сколько хватило'
+                                                    }
+                                                </div>
+                                                <button
+                                                    onClick={() => startEditing(purchase)}
+                                                    className="text-blue-500 hover:text-blue-400 text-sm"
+                                                >
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {vapePurchases.length === 0 ? (
+                                <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-8 text-center">
+                                    <i className="fas fa-cloud text-5xl mb-4 text-gray-400"></i>
+                                    <h3 className="text-xl font-medium mb-2">Покупок нет</h3>
+                                    <p className="dark:text-gray-500 text-gray-600">
+                                        Добавьте первую покупку для вейпа
+                                    </p>
+                                </div>
+                            ) : (
+                                vapePurchases.map(purchase => (
+                                    <div key={purchase.id} className="dark:bg-dark-800 bg-light-800 rounded-xl p-4 shadow">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex-1">
+                                                <div className="font-medium">
+                                                    {formatDate(purchase.date)} - {purchase.totalPrice} ₽
+                                                </div>
+                                                <div className="text-sm dark:text-gray-400 text-gray-600">
+                                                    {purchase.coil > 0 ? `${purchase.coil} испаритель(я)` : ''}
+                                                    {purchase.coil > 0 && purchase.liquid > 0 ? ' · ' : ''}
+                                                    {purchase.liquid > 0 ? `20 мл жидкости` : ''}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => onDeleteVapePurchase(purchase.id)}
+                                                className="text-red-500 hover:text-red-400 p-2 ml-2"
+                                            >
+                                                <i className="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        {editingDuration === purchase.id ? (
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="number"
+                                                    value={durationInput}
+                                                    onChange={(e) => setDurationInput(e.target.value)}
+                                                    className="flex-1 dark:bg-dark-700 bg-light-700 border dark:border-dark-600 border-light-500 rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-vape-600"
+                                                    placeholder="На сколько дней хватило"
+                                                    min="0.1"
+                                                    step="0.1"
+                                                />
+                                                <button
+                                                    onClick={() => updatePurchaseDuration(purchase.id, 'vape', durationInput)}
+                                                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                                                >
+                                                    ✓
+                                                </button>
+                                                <button
+                                                    onClick={cancelEditing}
+                                                    className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
+                                                >
+                                                    ✗
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between items-center">
+                                                <div className="text-sm dark:text-gray-400 text-gray-600">
+                                                    {purchase.duration 
+                                                        ? `На ${purchase.duration} дней · ${(purchase.totalPrice / purchase.duration).toFixed(2)} ₽/день`
+                                                        : 'Не указано, на сколько хватило'
+                                                    }
+                                                </div>
+                                                <button
+                                                    onClick={() => startEditing(purchase)}
+                                                    className="text-blue-500 hover:text-blue-400 text-sm"
+                                                >
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Компонент вкладки статистики
+        function StatsTab({ cigarettePurchases, vapePurchases, theme }) {
+            // Фильтруем покупки, у которых установлен duration
+            const validCigarettePurchases = cigarettePurchases.filter(p => p.duration);
+            const validVapePurchases = vapePurchases.filter(p => p.duration);
+
+            // Расчет статистики по сигаретам
+            const cigaretteStats = validCigarettePurchases.reduce((stats, purchase) => {
+                const costPerDay = purchase.price / purchase.duration;
+                return {
+                    totalSpent: stats.totalSpent + purchase.price,
+                    totalDays: stats.totalDays + purchase.duration,
+                    dailyCost: stats.dailyCost + costPerDay,
+                    count: stats.count + 1
+                };
+            }, { totalSpent: 0, totalDays: 0, dailyCost: 0, count: 0 });
+
+            const avgCigaretteDailyCost = cigaretteStats.count > 0 
+                ? cigaretteStats.dailyCost / cigaretteStats.count 
+                : 0;
+
+            // Расчет статистики по вейпу
+            const vapeStats = validVapePurchases.reduce((stats, purchase) => {
+                const costPerDay = purchase.totalPrice / purchase.duration;
+                return {
+                    totalSpent: stats.totalSpent + purchase.totalPrice,
+                    totalDays: stats.totalDays + purchase.duration,
+                    dailyCost: stats.dailyCost + costPerDay,
+                    count: stats.count + 1
+                };
+            }, { totalSpent: 0, totalDays: 0, dailyCost: 0, count: 0 });
+
+            const avgVapeDailyCost = vapeStats.count > 0 
+                ? vapeStats.dailyCost / vapeStats.count 
+                : 0;
+
+            // Расчет месячных затрат
+            const cigaretteMonthly = avgCigaretteDailyCost * 30;
+            const vapeMonthly = avgVapeDailyCost * 30;
+            const savings = cigaretteMonthly - vapeMonthly;
+            const savingsPercent = cigaretteMonthly > 0 
+                ? (savings / cigaretteMonthly) * 100 
+                : 0;
+
+            return (
+                <div>
+                    <h2 className="text-xl font-bold mb-6">Статистика и сравнение</h2>
+                    
+                    {/* Добавляем информацию о неучтенных покупках */}
+                    {(cigarettePurchases.length > validCigarettePurchases.length || 
+                      vapePurchases.length > validVapePurchases.length) && (
+                        <div className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 p-3 rounded-lg mb-6">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            В статистике учтены только покупки с указанной длительностью использования
+                        </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-5 shadow border-l-4 border-cigarette-600">
+                            <h3 className="font-medium mb-4 text-cigarette-600">
+                                <i className="fas fa-smoking mr-2"></i>
+                                Сигареты
+                            </h3>
+                            <div className="space-y-2">
+                                <StatItem 
+                                    label="Всего потрачено" 
+                                    value={`${cigaretteStats.totalSpent.toFixed(2)} ₽`} 
+                                />
+                                <StatItem 
+                                    label="Количество покупок" 
+                                    value={`${validCigarettePurchases.length}/${cigarettePurchases.length}`} 
+                                />
+                                <StatItem 
+                                    label="Средние затраты в день" 
+                                    value={`${avgCigaretteDailyCost.toFixed(2)} ₽`} 
+                                />
+                                <StatItem 
+                                    label="Примерно в месяц" 
+                                    value={`${cigaretteMonthly.toFixed(2)} ₽`} 
+                                    highlight={true}
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-5 shadow border-l-4 border-vape-600">
+                            <h3 className="font-medium mb-4 text-vape-600">
+                                <i className="fas fa-cloud mr-2"></i>
+                                Вейп
+                            </h3>
+                            <div className="space-y-2">
+                                <StatItem 
+                                    label="Всего потрачено" 
+                                    value={`${vapeStats.totalSpent.toFixed(2)} ₽`} 
+                                />
+                                <StatItem 
+                                    label="Количество покупок" 
+                                    value={`${validVapePurchases.length}/${vapePurchases.length}`} 
+                                />
+                                <StatItem 
+                                    label="Средние затраты в день" 
+                                    value={`${avgVapeDailyCost.toFixed(2)} ₽`} 
+                                />
+                                <StatItem 
+                                    label="Примерно в месяц" 
+                                    value={`${vapeMonthly.toFixed(2)} ₽`} 
+                                    highlight={true}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="dark:bg-dark-800 bg-light-800 rounded-xl p-6 shadow">
+                        <h3 className="font-medium mb-4 text-primary-600">
+                            <i className="fas fa-scale-balanced mr-2"></i>
+                            Сравнение
+                        </h3>
+                        
+                        {validCigarettePurchases.length > 0 && validVapePurchases.length > 0 ? (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center p-4 dark:bg-dark-700 bg-light-700 rounded-lg">
+                                    <span className="font-medium">Экономия в месяц:</span>
+                                    <span className={`text-lg font-bold ${savings >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {savings >= 0 ? '+' : ''}{savings.toFixed(2)} ₽
+                                    </span>
+                                </div>
+                                
+                                <div className="flex justify-between items-center p-4 dark:bg-dark-700 bg-light-700 rounded-lg">
+                                    <span className="font-medium">Процент экономии:</span>
+                                    <span className={`text-lg font-bold ${savings >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {savings >= 0 ? '+' : ''}{savingsPercent.toFixed(1)}%
+                                    </span>
+                                </div>
+                                
+                                <div className="text-center mt-6">
+                                    <h4 className="font-medium mb-2">Что выгоднее?</h4>
+                                    <div className={`text-2xl font-bold ${savings >= 0 ? 'text-vape-600' : 'text-cigarette-600'}`}>
+                                        {savings >= 0 ? 'Вейп' : 'Сигареты'}
+                                    </div>
+                                    <p className="dark:text-gray-400 text-gray-600 mt-2">
+                                        {savings >= 0 
+                                            ? `При использовании вейпа вы экономите около ${savings.toFixed(2)} ₽ в месяц`
+                                            : `При использовании сигарет вы экономите около ${Math.abs(savings).toFixed(2)} ₽ в месяц`
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 dark:text-gray-500 text-gray-600">
+                                <i className="fas fa-info-circle mr-2"></i>
+                                Добавьте данные о покупках сигарет и вейпа для сравнения
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Компонент элемента статистики
+        function StatItem({ label, value, highlight = false }) {
+            return (
+                <div className="flex justify-between items-center">
+                    <span className="dark:text-gray-400 text-gray-600">{label}:</span>
+                    <span className={`font-medium ${highlight ? 'text-lg text-primary-600' : ''}`}>
+                        {value}
+                    </span>
+                </div>
+            );
+        }
+
+        // Рендерим приложение
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
